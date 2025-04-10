@@ -15,7 +15,7 @@ async function main(): Promise<void> {
   try {
     await auth.authenticate(
       process.env.USER_ID!,
-      process.env.GARMIN_EMAIL!,
+      process.env.GARMIN_USERNAME!,
       process.env.GARMIN_PASSWORD!,
     );
 
