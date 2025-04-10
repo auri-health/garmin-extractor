@@ -11,18 +11,33 @@ export class GarminAuth {
 
   constructor(storage: GarminAuthStorage) {
     this.storage = storage;
+    
+    // Validate environment variables
+    const username = process.env.GARMIN_USERNAME;
+    const password = process.env.GARMIN_PASSWORD;
+    
+    if (!username || !password) {
+      throw new Error('GARMIN_USERNAME and GARMIN_PASSWORD must be set in environment variables');
+    }
+
     this.garminClient = new GarminConnect({
-      username: process.env.GARMIN_USERNAME || '',
-      password: process.env.GARMIN_PASSWORD || ''
+      username,
+      password
     });
   }
 
   private async attemptLogin(email: string, password: string): Promise<void> {
     try {
+      if (!email || !password) {
+        throw new Error('Email and password are required for Garmin login');
+      }
+
       console.log('Attempting to login with Garmin Connect...');
       console.log('Debug - Login attempt with:', {
         username: email,
-        passwordLength: password?.length || 0
+        passwordLength: password?.length || 0,
+        hasUsername: !!email,
+        hasPassword: !!password
       });
       
       // Create a new client instance with provided credentials
