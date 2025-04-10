@@ -20,7 +20,10 @@ export class GarminAuth {
   private async attemptLogin(email: string, password: string): Promise<void> {
     try {
       console.log('Attempting to login with Garmin Connect...');
-      console.log('Using username:', email);
+      console.log('Debug - Login attempt with:', {
+        username: email,
+        passwordLength: password?.length || 0
+      });
       
       // Create a new client instance with provided credentials
       this.garminClient = new GarminConnect({
@@ -28,12 +31,16 @@ export class GarminAuth {
         password: password
       });
 
-      // Attempt login
-      await this.garminClient.login();
+      // Attempt login with explicit parameters
+      await this.garminClient.login(email, password);
       console.log('✓ Login successful');
       
     } catch (error: unknown) {
       console.error('Detailed login error:', error);
+      console.error('Debug - Error context:', {
+        errorType: error?.constructor?.name,
+        message: error instanceof Error ? error.message : String(error)
+      });
 
       if (error instanceof Error) {
         if (error.message?.includes('CSRF token')) {
