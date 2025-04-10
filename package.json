@@ -1,0 +1,35 @@
+{
+  "name": "garmin-extractor",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "cross-env DEBUG=garmin-connect:* ts-node src/index.ts",
+    "build": "npx tsc",
+    "dev": "npx ts-node-dev --respawn src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/auri-health/garmin-extractor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/auri-health/garmin-extractor/issues"
+  },
+  "homepage": "https://github.com/auri-health/garmin-extractor#readme",
+  "description": "",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "@types/node": "^22.14.0",
+    "dotenv": "^16.4.7",
+    "garmin-connect": "^1.6.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "ts-node-dev": "^2.0.0"
+  }
+}

@@ -1,0 +1,131 @@
+import { GarminConnect } from 'garmin-connect';
+import * as dotenv from 'dotenv';
+import { GarminAuthStorage, GarminUserAuth } from './types';
+
+dotenv.config();
+
+export interface GarminCredentials {
+  username: string;
+  password: string;
+}
+
+export class GarminAuth {
+  private client!: InstanceType<typeof GarminConnect>;
+  private isAuthenticated: boolean = false;
+  private userId?: string;
+
+  constructor(
+    private storage: GarminAuthStorage,
+    private credentials?: GarminCredentials
+  ) {
+    if (credentials) {
+      this.initializeClient(credentials);
+    }
+  }
+
+  private initializeClient(credentials: GarminCredentials) {
+    console.log('Initializing Garmin Connect client...');
+    this.client = new GarminConnect({
+      username: credentials.username,
+      password: credentials.password
+    });
+  }
+
+  private async attemptLogin(client: InstanceType<typeof GarminConnect>): Promise<void> {
+    try {
+      console.log('Attempting to login with Garmin Connect...');
+      await client.login();
+      console.log('✓ Login successful');
+    } catch (error: any) {
+      console.error('Detailed login error:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      });
+
+      if (error.message?.includes('CSRF token')) {
+        throw new Error('CSRF token validation failed. Please try again.');
+      } else if (error.message?.includes('rate limit')) {
+        throw new Error('Rate limit reached. Please wait before trying again.');
+      } else if (error.message?.includes('credentials')) {
+        throw new Error('Invalid username or password. Please check your credentials.');
+      }
+
+      throw error;
+    }
+  }
+
+  async initializeForUser(userId: string): Promise<void> {
+    this.userId = userId;
+    const auth = await this.storage.getUserAuth(userId);
+    if (!auth) {
+      throw new Error(`No Garmin authentication found for user ${userId}`);
+    }
+
+    this.initializeClient({
+      username: auth.garmin_email,
+      password: auth.garmin_password
+    });
+  }
+
+  async registerUser(userId: string, credentials: GarminCredentials): Promise<void> {
+    console.log(`Registering user ${userId} with Garmin Connect...`);
+    
+    // Create a temporary client for registration
+    const tempClient = new GarminConnect({
+      username: credentials.username,
+      password: credentials.password
+    });
+
+    try {
+      // Attempt login with detailed error handling
+      await this.attemptLogin(tempClient);
+      
+      // If login successful, save to database
+      console.log('Saving credentials to database...');
+      await this.storage.saveUserAuth({
+        user_id: userId,
+        garmin_email: credentials.username,
+        garmin_password: credentials.password,
+        created_at: new Date(),
+        updated_at: new Date()
+      });
+
+      this.userId = userId;
+      this.client = tempClient;
+      this.isAuthenticated = true;
+      console.log('✓ User registration complete');
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
+    }
+  }
+
+  async authenticate(): Promise<InstanceType<typeof GarminConnect>> {
+    if (!this.userId) {
+      throw new Error('No user initialized. Call initializeForUser() first.');
+    }
+
+    if (!this.isAuthenticated) {
+      await this.attemptLogin(this.client);
+      this.isAuthenticated = true;
+    }
+    return this.client;
+  }
+
+  async validateCredentials(): Promise<boolean> {
+    try {
+      await this.authenticate();
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  getClient(): InstanceType<typeof GarminConnect> {
+    if (!this.isAuthenticated) {
+      throw new Error('Not authenticated. Call authenticate() first.');
+    }
+    return this.client;
+  }
+} 
