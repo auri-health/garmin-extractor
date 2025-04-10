@@ -11,21 +11,33 @@ export class GarminAuth {
 
   constructor(storage: GarminAuthStorage) {
     this.storage = storage;
-    this.garminClient = new GarminConnect({
-      username: '',
-      password: '',
-    });
+    this.garminClient = new GarminConnect();
   }
 
   private async attemptLogin(email: string, password: string): Promise<void> {
     try {
       console.log('Attempting to login with Garmin Connect...');
+      
+      // Create a new client instance with tokenstore enabled
       this.garminClient = new GarminConnect({
         username: email,
         password: password,
+        tokenStore: '.garmin-token'  // Store tokens locally
       });
-      await this.garminClient.login();
-      console.log('✓ Login successful');
+
+      // Try to load existing tokens first
+      try {
+        await this.garminClient.loadToken();
+        console.log('✓ Loaded existing token');
+      } catch (e) {
+        // If loading token fails, do a fresh login
+        await this.garminClient.login();
+        console.log('✓ Fresh login successful');
+      }
+
+      // Save the token after successful login
+      await this.garminClient.saveToken();
+      
     } catch (error: unknown) {
       console.error('Detailed login error:', error);
 
@@ -36,6 +48,8 @@ export class GarminAuth {
           throw new Error('Rate limit reached. Please wait before trying again.');
         } else if (error.message?.includes('credentials')) {
           throw new Error('Invalid username or password. Please check your credentials.');
+        } else if (error.message?.includes('MFA')) {
+          throw new Error('MFA is enabled. Please use a token-based authentication method.');
         }
       }
 
