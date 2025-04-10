@@ -11,14 +11,17 @@ export class GarminAuth {
 
   constructor(storage: GarminAuthStorage) {
     this.storage = storage;
-    this.garminClient = new GarminConnect();
+    this.garminClient = new GarminConnect({
+      username: process.env.GARMIN_EMAIL || '',
+      password: process.env.GARMIN_PASSWORD || ''
+    });
   }
 
   private async attemptLogin(email: string, password: string): Promise<void> {
     try {
       console.log('Attempting to login with Garmin Connect...');
       
-      // Create a new client instance
+      // Create a new client instance with provided credentials
       this.garminClient = new GarminConnect({
         username: email,
         password: password
