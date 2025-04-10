@@ -31,14 +31,6 @@ jobs:
         node-version: 18.x
         cache: 'npm'
     
-    - name: Cache Garmin token
-      uses: actions/cache@v4
-      with:
-        path: .garmin-token
-        key: garmin-token-${{ github.run_id }}
-        restore-keys: |
-          garmin-token-
-    
     - name: Install dependencies
       run: npm ci
       

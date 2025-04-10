@@ -1,8 +1,7 @@
 declare module 'garmin-connect' {
-  interface GarminConnectConfig {
+  interface GCCredentials {
     username: string;
     password: string;
-    tokenStore?: string;
   }
 
   interface Activity {
@@ -12,10 +11,8 @@ declare module 'garmin-connect' {
   }
 
   export class GarminConnect {
-    constructor(config?: GarminConnectConfig);
-    login(): Promise<void>;
-    loadToken(): Promise<void>;
-    saveToken(): Promise<void>;
+    constructor(credentials?: GCCredentials);
+    login(username?: string, password?: string): Promise<void>;
     getActivities(start: number, limit: number): Promise<Activity[]>;
     getUserProfile(): Promise<{ userName: string; [key: string]: any }>;
     getHeartRate(date: Date): Promise<any>;
