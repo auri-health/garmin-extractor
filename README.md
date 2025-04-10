@@ -1,11 +1,11 @@
 # Garmin Data Extractor
 
-A Node.js application to extract data from Garmin Connect API and store user credentials securely in Supabase.
+A TypeScript application to extract data from Garmin Connect API and store user credentials securely in Supabase.
 
 ## Features
 
 - Secure Garmin Connect authentication
-- User credential storage in Supabase
+- User credential storage in Supabase with Row Level Security
 - Data extraction for:
   - User profile
   - Recent activities
@@ -14,11 +14,19 @@ A Node.js application to extract data from Garmin Connect API and store user cre
   - Steps data
   - Daily activities
 
+## Prerequisites
+
+- Node.js (v16 or higher)
+- npm or yarn
+- Supabase account and project
+
 ## Setup
 
 1. Install dependencies:
 ```bash
 npm install
+# or
+yarn install
 ```
 
 2. Create a `.env` file with the following variables:
@@ -30,10 +38,11 @@ SUPABASE_KEY=your_supabase_key
 USER_ID=your_user_id
 ```
 
-3. Create the required Supabase table:
+3. Create the required Supabase table with RLS policies:
 ```sql
+-- Create the table
 create table garmin_auth (
-  user_id uuid primary key,
+  user_id uuid primary key references auth.users(id),
   garmin_email text not null,
   garmin_password text not null,
   access_token text,
@@ -42,6 +51,14 @@ create table garmin_auth (
   created_at timestamp with time zone not null default now(),
   updated_at timestamp with time zone not null default now()
 );
+
+-- Enable Row Level Security
+alter table garmin_auth enable row level security;
+
+-- Create policy to only allow users to see their own data
+create policy "Users can only access their own garmin auth"
+  on garmin_auth for all
+  using (auth.uid() = user_id);
 ```
 
 ## Usage
@@ -49,27 +66,49 @@ create table garmin_auth (
 Run the extractor:
 ```bash
 npm run start
+# or
+yarn start
 ```
 
 This will:
-1. Authenticate with Garmin Connect
+1. Authenticate with Garmin Connect using stored credentials
 2. Extract user data
 3. Save data to JSON files in the `data` directory
 
 ## Project Structure
 
-- `src/auth/` - Authentication and credential management
-- `src/extractor/` - Data extraction logic
-- `src/types/` - TypeScript type definitions
+```
+garmin-extractor/
+├── src/
+│   ├── auth/           # Authentication and credential management
+│   ├── extractor/      # Data extraction logic
+│   └── types/          # TypeScript type definitions
+├── data/               # Extracted data (gitignored)
+└── dist/              # Compiled JavaScript output
+```
 
 ## Development
 
 Build the project:
 ```bash
 npm run build
+# or
+yarn build
 ```
 
 Run in development mode with auto-reload:
 ```bash
 npm run dev
-``` 
+# or
+yarn dev
+```
+
+## Type Safety
+
+The project uses TypeScript to ensure type safety and better developer experience. Make sure to run type checks before committing:
+
+```bash
+npm run type-check
+# or
+yarn type-check
+```
