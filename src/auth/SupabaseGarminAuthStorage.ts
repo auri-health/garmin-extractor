@@ -16,8 +16,6 @@ export class SupabaseGarminAuthStorage implements GarminAuthStorage {
           user_id: credentials.userId,
           garmin_email: credentials.garminEmail,
           garmin_password: credentials.garminPassword,
-          access_token: credentials.accessToken,
-          refresh_token: credentials.refreshToken,
           token_expires_at: credentials.tokenExpiresAt,
           updated_at: new Date().toISOString(),
         },
@@ -48,8 +46,6 @@ export class SupabaseGarminAuthStorage implements GarminAuthStorage {
       userId: data.user_id,
       garminEmail: data.garmin_email,
       garminPassword: data.garmin_password,
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
       tokenExpiresAt: data.token_expires_at ? new Date(data.token_expires_at) : undefined,
     };
   }
