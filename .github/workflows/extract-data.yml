@@ -15,7 +15,7 @@ env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
   USER_ID: ${{ secrets.USER_ID }}
-  GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+  GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
   GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
 
 jobs:
@@ -38,7 +38,11 @@ jobs:
       run: npm run build
       
     - name: Extract data
-      run: npm start
+      run: |
+        echo "Debug: Checking environment variables"
+        echo "Has GARMIN_USERNAME: ${{ !!secrets.GARMIN_USERNAME }}"
+        echo "Has GARMIN_PASSWORD: ${{ !!secrets.GARMIN_PASSWORD }}"
+        npm start
       
     - name: Upload data as artifact
       uses: actions/upload-artifact@v4.3.1
