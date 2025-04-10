@@ -22,11 +22,17 @@ for (const envVar of requiredEnvVars) {
   }
 }
 
+// Clean and validate USER_ID
+const userId = process.env.USER_ID!.trim().replace(/['"]/g, '');
+if (!userId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
+  throw new Error('Invalid USER_ID format. Must be a valid UUID.');
+}
+
 // Debug log environment variables
 console.log('Environment variables loaded:', {
   hasSupabaseUrl: !!process.env.SUPABASE_URL,
   hasSupabaseKey: !!process.env.SUPABASE_KEY,
-  hasUserId: !!process.env.USER_ID,
+  userId: userId,
   garminUsername: process.env.GARMIN_USERNAME,
   hasGarminPassword: !!process.env.GARMIN_PASSWORD
 });
@@ -39,7 +45,7 @@ async function main(): Promise<void> {
 
   try {
     await auth.authenticate(
-      process.env.USER_ID!,
+      userId,
       process.env.GARMIN_USERNAME!,
       process.env.GARMIN_PASSWORD!,
     );
