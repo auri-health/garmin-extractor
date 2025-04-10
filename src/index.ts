@@ -1,39 +1,30 @@
-import { GarminAuth } from './auth/GarminAuth';
-import { GarminExtractor } from './extractor/GarminExtractor';
-import { SupabaseGarminAuthStorage } from './auth/SupabaseGarminAuthStorage';
+import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
+import { GarminAuth } from './auth/GarminAuth';
+import { SupabaseGarminAuthStorage } from './auth/SupabaseGarminAuthStorage';
+import { GarminExtractor } from './extractor/GarminExtractor';
 
 dotenv.config();
 
-async function main() {
-    console.log('Starting Garmin data extraction...');
+async function main(): Promise<void> {
+  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
 
-    const storage = new SupabaseGarminAuthStorage(
-        process.env.SUPABASE_URL!,
-        process.env.SUPABASE_KEY!
+  const storage = new SupabaseGarminAuthStorage(supabase);
+  const auth = new GarminAuth(storage);
+
+  try {
+    await auth.authenticate(
+      process.env.USER_ID!,
+      process.env.GARMIN_EMAIL!,
+      process.env.GARMIN_PASSWORD!,
     );
 
-    const auth = new GarminAuth(storage);
-    const userId = process.env.USER_ID!;
-
-    try {
-        // Initialize auth for existing user
-        await auth.initializeForUser(userId);
-
-        // Authenticate with Garmin
-        const client = await auth.authenticate();
-
-        // Extract data
-        const extractor = new GarminExtractor(client);
-        await extractor.extractUserProfile();
-        await extractor.extractRecentActivities();
-        await extractor.extractLastNDays(7);
-
-        console.log('Data extraction complete!');
-    } catch (error) {
-        console.error('Error:', error);
-        process.exit(1);
-    }
+    const extractor = new GarminExtractor(auth.getClient());
+    await extractor.extractAll();
+  } catch (error) {
+    console.error('Error:', error);
+    process.exit(1);
+  }
 }
 
-main(); 
+main();

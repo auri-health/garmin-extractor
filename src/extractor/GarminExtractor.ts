@@ -1,100 +1,78 @@
 import { GarminConnect } from 'garmin-connect';
-import { mkdir, writeFile } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class GarminExtractor {
-  private readonly OUTPUT_DIR: string;
+  private readonly OUTPUT_DIR = 'data';
+  private client: GarminConnect;
 
-  constructor(
-    private client: InstanceType<typeof GarminConnect>,
-    outputDir: string = './data'
-  ) {
-    this.OUTPUT_DIR = outputDir;
-  }
-
-  private async ensureOutputDir(): Promise<void> {
-    if (!existsSync(this.OUTPUT_DIR)) {
-      await mkdir(this.OUTPUT_DIR, { recursive: true });
+  constructor(client: GarminConnect) {
+    this.client = client;
+    if (!fs.existsSync(this.OUTPUT_DIR)) {
+      fs.mkdirSync(this.OUTPUT_DIR);
     }
   }
 
-  private async saveDataToFile(filename: string, data: any): Promise<void> {
-    await writeFile(
-      join(this.OUTPUT_DIR, filename),
+  private async saveToFile(filename: string, data: unknown): Promise<void> {
+    await fs.promises.writeFile(
+      path.join(this.OUTPUT_DIR, filename),
       JSON.stringify(data, null, 2),
-      'utf-8'
+      'utf-8',
     );
   }
 
-  async extractDailyData(date: Date): Promise<void> {
-    const dateStr = date.toISOString().split('T')[0];
-    console.log(`Fetching data for ${dateStr}...`);
-
-    try {
-      // Fetch heart rate data
-      const heartRate = await this.client.getHeartRate(date);
-      await this.saveDataToFile(`heart-rate-${dateStr}.json`, heartRate);
-      console.log('✓ Heart rate data saved');
-
-      // Fetch sleep data
-      const sleep = await this.client.getSleepData(date);
-      await this.saveDataToFile(`sleep-${dateStr}.json`, sleep);
-      console.log('✓ Sleep data saved');
-
-      // Fetch steps data
-      const steps = await this.client.getSteps(date);
-      await this.saveDataToFile(`steps-${dateStr}.json`, steps);
-      console.log('✓ Steps data saved');
-
-      // Get activities for the day
-      const activities = await this.client.getActivities(0, 100);
-      const dailyActivities = activities.filter(activity => {
-        const activityDate = new Date(activity.startTimeLocal).toISOString().split('T')[0];
-        return activityDate === dateStr;
-      });
-      await this.saveDataToFile(`activities-${dateStr}.json`, dailyActivities);
-      console.log('✓ Activities saved');
-    } catch (error) {
-      console.error(`Error fetching data for ${dateStr}:`, error);
-      throw error;
-    }
+  public async extractUserProfile(): Promise<void> {
+    const profile = await this.client.getUserProfile();
+    await this.saveToFile('user-profile.json', profile);
   }
 
-  async extractUserProfile(): Promise<void> {
-    try {
-      await this.ensureOutputDir();
-      const userProfile = await this.client.getUserProfile();
-      await this.saveDataToFile('user-profile.json', userProfile);
-      console.log('✓ User profile saved');
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
-      throw error;
-    }
+  public async extractRecentActivities(): Promise<void> {
+    const activities = await this.client.getActivities(0, 10);
+    await this.saveToFile('recent-activities.json', activities);
   }
 
-  async extractRecentActivities(limit: number = 10): Promise<void> {
-    try {
-      await this.ensureOutputDir();
-      const recentActivities = await this.client.getActivities(0, limit);
-      await this.saveDataToFile('recent-activities.json', recentActivities);
-      console.log('✓ Recent activities saved');
-    } catch (error) {
-      console.error('Error fetching recent activities:', error);
-      throw error;
-    }
+  public async extractHeartRate(date: Date): Promise<void> {
+    const heartRate = await this.client.getHeartRate(date);
+    await this.saveToFile(`heart-rate-${date.toISOString().split('T')[0]}.json`, heartRate);
   }
 
-  async extractLastNDays(days: number = 7): Promise<void> {
+  public async extractSleep(date: Date): Promise<void> {
+    const sleep = await this.client.getSleepData(date);
+    await this.saveToFile(`sleep-${date.toISOString().split('T')[0]}.json`, sleep);
+  }
+
+  public async extractSteps(date: Date): Promise<void> {
+    const steps = await this.client.getSteps(date);
+    await this.saveToFile(`steps-${date.toISOString().split('T')[0]}.json`, steps);
+  }
+
+  public async extractDailyActivities(date: Date): Promise<void> {
+    const activities = await this.client.getActivities(0, 100);
+    const dailyActivities = activities.filter((activity) => {
+      const activityDate = new Date(activity.startTimeLocal).toISOString().split('T')[0];
+      return activityDate === date.toISOString().split('T')[0];
+    });
+    await this.saveToFile(`activities-${date.toISOString().split('T')[0]}.json`, dailyActivities);
+  }
+
+  public async extractLastNDays(days: number): Promise<void> {
     const dates = Array.from({ length: days }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - i);
       return date;
     });
 
-    await this.ensureOutputDir();
     for (const date of dates) {
-      await this.extractDailyData(date);
+      await this.extractHeartRate(date);
+      await this.extractSleep(date);
+      await this.extractSteps(date);
+      await this.extractDailyActivities(date);
     }
   }
-} 
+
+  public async extractAll(): Promise<void> {
+    await this.extractUserProfile();
+    await this.extractRecentActivities();
+    await this.extractLastNDays(7); // Extract last 7 days of data
+  }
+}

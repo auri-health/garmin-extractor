@@ -1,6 +1,6 @@
 import { GarminConnect } from 'garmin-connect';
 import * as dotenv from 'dotenv';
-import { GarminAuthStorage, GarminUserAuth } from './types';
+import { GarminAuthStorage, GarminCredentials, GarminTokens } from './types';
 
 dotenv.config();
 
@@ -10,25 +10,14 @@ export interface GarminCredentials {
 }
 
 export class GarminAuth {
-  private client!: InstanceType<typeof GarminConnect>;
+  private garminClient: GarminConnect;
+  private storage: GarminAuthStorage;
   private isAuthenticated: boolean = false;
   private userId?: string;
 
-  constructor(
-    private storage: GarminAuthStorage,
-    private credentials?: GarminCredentials
-  ) {
-    if (credentials) {
-      this.initializeClient(credentials);
-    }
-  }
-
-  private initializeClient(credentials: GarminCredentials) {
-    console.log('Initializing Garmin Connect client...');
-    this.client = new GarminConnect({
-      username: credentials.username,
-      password: credentials.password
-    });
+  constructor(storage: GarminAuthStorage) {
+    this.storage = storage;
+    this.garminClient = new GarminConnect({});
   }
 
   private async attemptLogin(client: InstanceType<typeof GarminConnect>): Promise<void> {
@@ -62,25 +51,25 @@ export class GarminAuth {
       throw new Error(`No Garmin authentication found for user ${userId}`);
     }
 
-    this.initializeClient({
+    this.garminClient = new GarminConnect({
       username: auth.garmin_email,
-      password: auth.garmin_password
+      password: auth.garmin_password,
     });
   }
 
   async registerUser(userId: string, credentials: GarminCredentials): Promise<void> {
     console.log(`Registering user ${userId} with Garmin Connect...`);
-    
+
     // Create a temporary client for registration
     const tempClient = new GarminConnect({
       username: credentials.username,
-      password: credentials.password
+      password: credentials.password,
     });
 
     try {
       // Attempt login with detailed error handling
       await this.attemptLogin(tempClient);
-      
+
       // If login successful, save to database
       console.log('Saving credentials to database...');
       await this.storage.saveUserAuth({
@@ -88,11 +77,11 @@ export class GarminAuth {
         garmin_email: credentials.username,
         garmin_password: credentials.password,
         created_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
       });
 
       this.userId = userId;
-      this.client = tempClient;
+      this.garminClient = tempClient;
       this.isAuthenticated = true;
       console.log('✓ User registration complete');
     } catch (error) {
@@ -107,10 +96,10 @@ export class GarminAuth {
     }
 
     if (!this.isAuthenticated) {
-      await this.attemptLogin(this.client);
+      await this.attemptLogin(this.garminClient);
       this.isAuthenticated = true;
     }
-    return this.client;
+    return this.garminClient;
   }
 
   async validateCredentials(): Promise<boolean> {
@@ -122,10 +111,58 @@ export class GarminAuth {
     }
   }
 
-  getClient(): InstanceType<typeof GarminConnect> {
+  public getClient(): GarminConnect {
     if (!this.isAuthenticated) {
       throw new Error('Not authenticated. Call authenticate() first.');
     }
-    return this.client;
+    return this.garminClient;
   }
-} 
+
+  public async authenticate(
+    userId: string,
+    email: string,
+    password: string,
+  ): Promise<GarminCredentials> {
+    try {
+      await this.garminClient.login(email, password);
+      const tokens = (await this.garminClient.oauth2Token()) as GarminTokens;
+
+      const credentials: GarminCredentials = {
+        userId,
+        garminEmail: email,
+        garminPassword: password,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+      };
+
+      await this.storage.storeCredentials(credentials);
+      return credentials;
+    } catch (error) {
+      console.error('Error authenticating with Garmin:', error);
+      throw error;
+    }
+  }
+
+  public async refreshAuth(userId: string): Promise<void> {
+    try {
+      const credentials = await this.storage.getCredentials(userId);
+      if (!credentials) {
+        throw new Error('No credentials found for user');
+      }
+
+      await this.garminClient.login(credentials.garminEmail, credentials.garminPassword);
+      const tokens = (await this.garminClient.oauth2Token()) as GarminTokens;
+
+      await this.storage.storeCredentials({
+        ...credentials,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        tokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+      });
+    } catch (error) {
+      console.error('Error refreshing Garmin auth:', error);
+      throw error;
+    }
+  }
+}

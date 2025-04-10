@@ -1,73 +1,56 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { GarminAuthStorage, GarminUserAuth } from './types';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { GarminAuthStorage, GarminCredentials } from './types';
 
 export class SupabaseGarminAuthStorage implements GarminAuthStorage {
-  private client: SupabaseClient;
+  private supabase: SupabaseClient;
 
-  constructor(supabaseUrl: string, supabaseKey: string) {
-    // Using service role key for admin access
-    this.client = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      },
-      db: {
-        schema: 'public'
-      }
-    });
+  constructor(supabase: SupabaseClient) {
+    this.supabase = supabase;
   }
 
-  async saveUserAuth(auth: GarminUserAuth): Promise<void> {
-    const { error } = await this.client
+  public async storeCredentials(credentials: GarminCredentials): Promise<void> {
+    const { error } = await this.supabase
       .from('garmin_auth')
-      .upsert([{
-        user_id: auth.user_id,
-        garmin_email: auth.garmin_email,
-        garmin_password: auth.garmin_password,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }], {
-        onConflict: 'user_id'
-      });
+      .upsert([
+        {
+          user_id: credentials.userId,
+          garmin_email: credentials.garminEmail,
+          garmin_password: credentials.garminPassword,
+          access_token: credentials.accessToken,
+          refresh_token: credentials.refreshToken,
+          token_expires_at: credentials.tokenExpiresAt,
+          updated_at: new Date().toISOString(),
+        },
+      ])
+      .single();
 
     if (error) {
-      console.error('Database error:', error);
       throw error;
     }
   }
 
-  async getUserAuth(userId: string): Promise<GarminUserAuth | null> {
-    const { data, error } = await this.client
+  public async getCredentials(userId: string): Promise<GarminCredentials | null> {
+    const { data, error } = await this.supabase
       .from('garmin_auth')
-      .select('*')
+      .select()
       .eq('user_id', userId)
       .single();
 
     if (error) {
-      console.error('Database error:', error);
       throw error;
     }
-    return data;
-  }
 
-  async updateTokens(userId: string, tokens: {
-    access_token: string;
-    refresh_token: string;
-    expires_at: Date;
-  }): Promise<void> {
-    const { error } = await this.client
-      .from('garmin_auth')
-      .update({
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        token_expires_at: tokens.expires_at.toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('Database error:', error);
-      throw error;
+    if (!data) {
+      return null;
     }
+
+    return {
+      userId: data.user_id,
+      garminEmail: data.garmin_email,
+      garminPassword: data.garmin_password,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      tokenExpiresAt: data.token_expires_at ? new Date(data.token_expires_at) : undefined,
+    };
   }
-} 
+}
