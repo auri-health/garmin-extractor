@@ -2,8 +2,6 @@ export interface GarminCredentials {
   userId: string;
   garminEmail: string;
   garminPassword: string;
-  accessToken?: string;
-  refreshToken?: string;
   tokenExpiresAt?: Date;
 }
 
