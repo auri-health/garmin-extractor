@@ -20,12 +20,12 @@ jobs:
       GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: device-specific-fetch
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
@@ -72,7 +72,7 @@ jobs:
 
       - name: Upload extraction results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: extraction-results
           path: data/
