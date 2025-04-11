@@ -1,0 +1,79 @@
+name: Test Forerunner 235 Extraction
+
+on:
+  push:
+    branches:
+      - device-specific-fetch
+  pull_request:
+    branches:
+      - device-specific-fetch
+
+jobs:
+  test-fr235:
+    runs-on: ubuntu-latest
+    
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      USER_ID: ${{ secrets.USER_ID }}
+      GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+      GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: device-specific-fetch
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Run Forerunner 235 extraction test
+        run: |
+          # Create data directory if it doesn't exist
+          mkdir -p data
+          
+          # Run the extractor
+          node dist/index.js
+        
+      - name: Check extraction results
+        run: |
+          # Check if files were created
+          if [ ! -d "data" ]; then
+            echo "Data directory not found!"
+            exit 1
+          fi
+          
+          # Check for specific files
+          for file in user-profile.json heart-rate-*.json sleep-*.json steps-*.json activities-*.json; do
+            if ! ls data/$file 1> /dev/null 2>&1; then
+              echo "Missing expected file: $file"
+              exit 1
+            fi
+          done
+          
+          # Check file contents for Forerunner 235 specific fields
+          for file in data/heart-rate-*.json; do
+            if grep -q "hrvStatus\|bodyBattery\|pulseOx" "$file"; then
+              echo "Found unsupported fields in $file"
+              exit 1
+            fi
+          done
+          
+          echo "All extraction tests passed!"
+
+      - name: Upload extraction results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: extraction-results
+          path: data/
+          retention-days: 5 
