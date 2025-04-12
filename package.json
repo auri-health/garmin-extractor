@@ -7,7 +7,7 @@
   "scripts": {
     "prebuild": "echo 'Starting build...'",
     "build": "tsc --noEmit false",
-    "start": "node dist/index.ts",
+    "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "jest"
   },
