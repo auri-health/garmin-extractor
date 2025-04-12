@@ -34,7 +34,7 @@ jobs:
       run: |
         echo "Installing dependencies..."
         npm ci
-        npm install -g typescript ts-node
+        npm install -g typescript ts-node @types/node
       
     - name: Create extraction script
       run: |
@@ -42,7 +42,12 @@ jobs:
         mkdir -p src/scripts
         cat << 'EOF' > src/scripts/extract.ts
         import { GarminConnect } from 'garmin-connect';
-        import { GarminExtractor } from '../extractor/GarminExtractor';
+        import { GarminExtractor } from '../extractor/GarminExtractor.js';
+        import { fileURLToPath } from 'url';
+        import { dirname } from 'path';
+
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = dirname(__filename);
 
         async function main() {
           const days = parseInt(process.argv[2] || '30', 10);
@@ -67,6 +72,13 @@ jobs:
         }
 
         main().catch(console.error);
+        EOF
+
+        # Create package.json for the script
+        cat << 'EOF' > src/scripts/package.json
+        {
+          "type": "module"
+        }
         EOF
       
     - name: Extract historical data
