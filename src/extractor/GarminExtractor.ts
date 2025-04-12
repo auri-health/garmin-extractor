@@ -260,9 +260,25 @@ export class GarminExtractor {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise);
+    console.error('Reason:', reason);
+    process.exit(1);
+  });
+
   (async () => {
     const days = parseInt(process.argv[2] || '30', 10);
     console.log('Starting extraction for', days, 'days');
+
+    // Check required environment variables
+    const requiredEnvVars = ['GARMIN_USERNAME', 'GARMIN_PASSWORD', 'SUPABASE_URL', 'SUPABASE_KEY', 'USER_ID'];
+    const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    
+    if (missingEnvVars.length > 0) {
+      console.error('Missing required environment variables:', missingEnvVars);
+      process.exit(1);
+    }
+
     console.log('Environment variables present:', {
       GARMIN_USERNAME: !!process.env.GARMIN_USERNAME,
       GARMIN_PASSWORD: !!process.env.GARMIN_PASSWORD,
@@ -298,12 +314,21 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           name: error.name
         });
       } else {
-        console.error('Non-Error object thrown:', error);
+        console.error('Non-Error object thrown:', JSON.stringify(error, null, 2));
       }
       process.exit(1);
     }
   })().catch(error => {
     console.error('Top level error:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+    } else {
+      console.error('Non-Error object thrown:', JSON.stringify(error, null, 2));
+    }
     process.exit(1);
   });
 }

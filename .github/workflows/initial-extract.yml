@@ -36,10 +36,21 @@ jobs:
         npm ci
         npm install -g typescript ts-node @types/node
       
+    - name: Create env file
+      run: |
+        echo "Creating .env file..."
+        cat << EOF > .env
+        GARMIN_USERNAME=${{ secrets.GARMIN_USERNAME }}
+        GARMIN_PASSWORD=${{ secrets.GARMIN_PASSWORD }}
+        SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
+        USER_ID=${{ secrets.USER_ID }}
+        EOF
+      
     - name: Extract historical data
       run: |
         echo "Extracting ${{ github.event.inputs.days }} days of historical data..."
-        NODE_OPTIONS="--loader ts-node/esm --no-warnings" ts-node --esm src/extractor/GarminExtractor.ts ${{ github.event.inputs.days }}
+        NODE_OPTIONS="--loader ts-node/esm --no-warnings" ts-node --require dotenv/config --esm src/extractor/GarminExtractor.ts ${{ github.event.inputs.days }}
       
     - name: Upload extracted data
       if: always()
