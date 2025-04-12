@@ -11,19 +11,7 @@ export class GarminAuth {
 
   constructor(storage: GarminAuthStorage) {
     this.storage = storage;
-    
-    // Validate environment variables
-    const username = process.env.GARMIN_USERNAME;
-    const password = process.env.GARMIN_PASSWORD;
-    
-    if (!username || !password) {
-      throw new Error('GARMIN_USERNAME and GARMIN_PASSWORD must be set in environment variables');
-    }
-
-    this.garminClient = new GarminConnect({
-      username,
-      password
-    });
+    this.garminClient = new GarminConnect();
   }
 
   private async attemptLogin(email: string, password: string): Promise<void> {
@@ -39,12 +27,6 @@ export class GarminAuth {
         hasUsername: !!email,
         hasPassword: !!password
       });
-      
-      // Create a new client instance with provided credentials
-      this.garminClient = new GarminConnect({
-        username: email,
-        password: password
-      });
 
       // Attempt login with explicit parameters
       await this.garminClient.login(email, password);
@@ -54,9 +36,11 @@ export class GarminAuth {
       console.error('Detailed login error:', error);
       console.error('Debug - Error context:', {
         errorType: error?.constructor?.name,
-        message: error instanceof Error ? error.message : String(error)
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       });
 
+      // Handle specific error cases
       if (error instanceof Error) {
         if (error.message?.includes('CSRF token')) {
           throw new Error('CSRF token validation failed. Please try again.');
@@ -69,7 +53,8 @@ export class GarminAuth {
         }
       }
 
-      throw error;
+      // If we don't have a specific error case, wrap the error with more context
+      throw new Error(`Failed to authenticate with Garmin: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -79,6 +64,7 @@ export class GarminAuth {
     password: string,
   ): Promise<GarminCredentials> {
     try {
+      console.log('Starting authentication process...');
       await this.attemptLogin(email, password);
 
       const credentials: GarminCredentials = {
@@ -88,17 +74,24 @@ export class GarminAuth {
         tokenExpiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour expiry
       };
 
+      console.log('Storing credentials...');
       await this.storage.storeCredentials(credentials);
       this.isAuthenticated = true;
+      console.log('Authentication completed successfully');
       return credentials;
     } catch (error) {
-      console.error('Error authenticating with Garmin:', error);
+      console.error('Authentication failed:', error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      } : error);
       throw error;
     }
   }
 
   public async refreshAuth(userId: string): Promise<void> {
     try {
+      console.log('Refreshing authentication...');
       const credentials = await this.storage.getCredentials(userId);
       if (!credentials) {
         throw new Error('No credentials found for user');
@@ -110,21 +103,34 @@ export class GarminAuth {
         ...credentials,
         tokenExpiresAt: new Date(Date.now() + 3600 * 1000), // 1 hour expiry
       });
+      console.log('Authentication refresh completed successfully');
     } catch (error) {
-      console.error('Error refreshing Garmin auth:', error);
+      console.error('Failed to refresh authentication:', error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      } : error);
       throw error;
     }
   }
 
   public async validateCredentials(userId: string): Promise<boolean> {
     try {
+      console.log('Validating credentials...');
       const credentials = await this.storage.getCredentials(userId);
       if (!credentials) {
+        console.log('No credentials found for user');
         return false;
       }
       await this.attemptLogin(credentials.garminEmail, credentials.garminPassword);
+      console.log('Credentials validated successfully');
       return true;
     } catch (error) {
+      console.error('Credential validation failed:', error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      } : error);
       return false;
     }
   }
