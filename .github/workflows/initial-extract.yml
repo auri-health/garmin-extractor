@@ -34,15 +34,14 @@ jobs:
       run: |
         echo "Installing dependencies..."
         npm ci
-        npm install -g ts-node typescript
+        npm install -g typescript ts-node
       
     - name: Create extraction script
       run: |
         echo "Creating extraction script..."
-        mkdir -p src/scripts
         cat << 'EOF' > src/scripts/extract.ts
         import { GarminConnect } from 'garmin-connect';
-        import { GarminExtractor } from '../extractor/GarminExtractor.js';
+        import { GarminExtractor } from '../extractor/GarminExtractor';
 
         async function main() {
           const days = parseInt(process.argv[2] || '30', 10);
@@ -72,7 +71,7 @@ jobs:
     - name: Extract historical data
       run: |
         echo "Extracting ${{ github.event.inputs.days }} days of historical data..."
-        ts-node src/scripts/extract.ts ${{ github.event.inputs.days }}
+        NODE_OPTIONS="--loader ts-node/esm" ts-node --esm src/scripts/extract.ts ${{ github.event.inputs.days }}
       
     - name: Upload extracted data
       if: always()
