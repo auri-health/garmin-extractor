@@ -89,26 +89,15 @@ garmin-extractor/
 
 ## Development
 
-Build the project:
-```bash
-npm run build
-# or
-yarn build
-```
+### Code Style and Linting
 
-Run in development mode with auto-reload:
-```bash
-npm run dev
-# or
-yarn dev
-```
+This project uses ESLint for TypeScript code quality checks. Linting is performed automatically in the CI/CD pipeline and is not required to run locally. All code style checks are enforced through GitHub workflows when:
+- Pushing to the main branch
+- Creating pull requests targeting main
 
-## Type Safety
+### Scripts
 
-The project uses TypeScript to ensure type safety and better developer experience. Make sure to run type checks before committing:
-
-```bash
-npm run type-check
-# or
-yarn type-check
-```
+- `npm run build` - Build TypeScript code
+- `npm start` - Run the extractor
+- `npm run dev` - Run with ts-node for development
+- `npm test` - Run tests

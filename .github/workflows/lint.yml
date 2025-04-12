@@ -25,4 +25,8 @@ jobs:
         run: npm ci
 
       - name: Run ESLint
-        run: npm run lint 
+        run: |
+          echo "Running ESLint checks in CI environment..."
+          npx eslint ./src/**/*.ts
+        env:
+          CI: true 
