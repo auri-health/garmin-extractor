@@ -1,0 +1,83 @@
+name: Initial Garmin Data Extract
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Number of days of historical data to extract'
+        required: true
+        default: '30'
+        type: string
+
+env:
+  NODE_VERSION: '18'
+  GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+  GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+  USER_ID: ${{ secrets.USER_ID }}
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        echo "Installing dependencies..."
+        npm ci
+        npm install -g ts-node typescript
+      
+    - name: Create extraction script
+      run: |
+        echo "Creating extraction script..."
+        mkdir -p src/scripts
+        cat << 'EOF' > src/scripts/extract.ts
+        import { GarminConnect } from 'garmin-connect';
+        import { GarminExtractor } from '../extractor/GarminExtractor.js';
+
+        async function main() {
+          const days = parseInt(process.argv[2] || '30', 10);
+          
+          const client = new GarminConnect({
+            username: process.env.GARMIN_USERNAME!,
+            password: process.env.GARMIN_PASSWORD!
+          });
+
+          try {
+            await client.login();
+            console.log('Successfully logged in to Garmin Connect');
+
+            const extractor = new GarminExtractor(client);
+            await extractor.extractLastNDays(days);
+            
+            console.log('Data extraction completed successfully');
+          } catch (error) {
+            console.error('Error during data extraction:', error);
+            process.exit(1);
+          }
+        }
+
+        main().catch(console.error);
+        EOF
+      
+    - name: Extract historical data
+      run: |
+        echo "Extracting ${{ github.event.inputs.days }} days of historical data..."
+        ts-node src/scripts/extract.ts ${{ github.event.inputs.days }}
+      
+    - name: Upload extracted data
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: garmin-data
+        path: data/
+        retention-days: 5 
