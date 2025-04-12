@@ -39,6 +39,7 @@ jobs:
     - name: Create extraction script
       run: |
         echo "Creating extraction script..."
+        mkdir -p src/scripts
         cat << 'EOF' > src/scripts/extract.ts
         import { GarminConnect } from 'garmin-connect';
         import { GarminExtractor } from '../extractor/GarminExtractor';
