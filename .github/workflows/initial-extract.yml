@@ -36,81 +36,10 @@ jobs:
         npm ci
         npm install -g typescript ts-node @types/node
       
-    - name: Create extraction script
-      run: |
-        echo "Creating extraction script..."
-        mkdir -p src/scripts
-        cat << 'EOF' > src/scripts/extract.ts
-        import { GarminConnect } from 'garmin-connect';
-        import { GarminExtractor } from '../extractor/GarminExtractor.js';
-
-        async function main() {
-          const days = parseInt(process.argv[2] || '30', 10);
-          console.log('Starting extraction for', days, 'days');
-          console.log('Environment variables present:', {
-            GARMIN_USERNAME: !!process.env.GARMIN_USERNAME,
-            GARMIN_PASSWORD: !!process.env.GARMIN_PASSWORD,
-            SUPABASE_URL: !!process.env.SUPABASE_URL,
-            SUPABASE_KEY: !!process.env.SUPABASE_KEY,
-            USER_ID: !!process.env.USER_ID
-          });
-          
-          try {
-            console.log('Initializing Garmin client...');
-            const client = new GarminConnect({
-              username: process.env.GARMIN_USERNAME!,
-              password: process.env.GARMIN_PASSWORD!
-            });
-
-            console.log('Attempting Garmin login...');
-            await client.login();
-            console.log('Successfully logged in to Garmin Connect');
-
-            console.log('Initializing extractor...');
-            const extractor = new GarminExtractor(client);
-
-            console.log('Starting data extraction...');
-            await extractor.extractLastNDays(days);
-            
-            console.log('Data extraction completed successfully');
-          } catch (error) {
-            console.error('Error during data extraction:', error);
-            if (error instanceof Error) {
-              console.error('Error details:', {
-                message: error.message,
-                stack: error.stack,
-                name: error.name
-              });
-            } else {
-              console.error('Non-Error object thrown:', error);
-            }
-            process.exit(1);
-          }
-        }
-
-        process.on('unhandledRejection', (reason, promise) => {
-          console.error('Unhandled Rejection at:', promise);
-          console.error('Reason:', reason);
-          process.exit(1);
-        });
-
-        main().catch(error => {
-          console.error('Top level error:', error);
-          process.exit(1);
-        });
-        EOF
-
-        # Create package.json for the script
-        cat << 'EOF' > src/scripts/package.json
-        {
-          "type": "module"
-        }
-        EOF
-      
     - name: Extract historical data
       run: |
         echo "Extracting ${{ github.event.inputs.days }} days of historical data..."
-        NODE_OPTIONS="--loader ts-node/esm --no-warnings" ts-node --esm src/scripts/extract.ts ${{ github.event.inputs.days }}
+        NODE_OPTIONS="--loader ts-node/esm --no-warnings" ts-node --esm src/extractor/GarminExtractor.ts ${{ github.event.inputs.days }}
       
     - name: Upload extracted data
       if: always()

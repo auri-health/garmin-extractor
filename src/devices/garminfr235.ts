@@ -1,4 +1,4 @@
-import { GarminActivity, GarminHeartRate, GarminSleep, GarminSteps } from '../types/garmin';
+import { GarminActivity, GarminHeartRate, GarminSleep, GarminSteps } from '../types/garmin.js';
 
 interface SleepFields {
   deepSleepSeconds: boolean;

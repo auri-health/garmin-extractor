@@ -2,8 +2,9 @@ import { GarminConnect } from 'garmin-connect';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as path from 'path';
-import { GarminDevice, GarminActivity, GarminHeartRate, GarminSleep, GarminSteps } from '../types/garmin';
+import { GarminDevice, GarminActivity, GarminHeartRate, GarminSleep, GarminSteps } from '../types/garmin.js';
 import { Forerunner235DataFilter } from '../devices/garminfr235';
+import { fileURLToPath } from 'url';
 
 export interface DeviceInfo {
   deviceId: string;
@@ -256,5 +257,54 @@ export class GarminExtractor {
     await this.extractRecentActivities(deviceId);
     await this.extractLastNDays(7, deviceId); // Extract last 7 days of data
   }
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  (async () => {
+    const days = parseInt(process.argv[2] || '30', 10);
+    console.log('Starting extraction for', days, 'days');
+    console.log('Environment variables present:', {
+      GARMIN_USERNAME: !!process.env.GARMIN_USERNAME,
+      GARMIN_PASSWORD: !!process.env.GARMIN_PASSWORD,
+      SUPABASE_URL: !!process.env.SUPABASE_URL,
+      SUPABASE_KEY: !!process.env.SUPABASE_KEY,
+      USER_ID: !!process.env.USER_ID
+    });
+
+    try {
+      console.log('Initializing Garmin client...');
+      const client = new GarminConnect({
+        username: process.env.GARMIN_USERNAME!,
+        password: process.env.GARMIN_PASSWORD!
+      });
+
+      console.log('Attempting Garmin login...');
+      await client.login();
+      console.log('Successfully logged in to Garmin Connect');
+
+      console.log('Initializing extractor...');
+      const extractor = new GarminExtractor(client);
+
+      console.log('Starting data extraction...');
+      await extractor.extractLastNDays(days);
+      
+      console.log('Data extraction completed successfully');
+    } catch (error) {
+      console.error('Error during data extraction:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
+      } else {
+        console.error('Non-Error object thrown:', error);
+      }
+      process.exit(1);
+    }
+  })().catch(error => {
+    console.error('Top level error:', error);
+    process.exit(1);
+  });
 }
 
