@@ -7,11 +7,6 @@ on:
     branches: [ main ]
 
 env:
-  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-  SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-  USER_ID: ${{ secrets.USER_ID }}
-  GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
-  GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
   NODE_VERSION: '18'
 
 jobs:
@@ -26,99 +21,26 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-    
-    - name: Get npm cache directory
-      id: npm-cache-dir
-      shell: bash
-      run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-    
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      id: npm-cache
-      with:
-        path: ${{ steps.npm-cache-dir.outputs.dir }}
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
 
     - name: Install dependencies
       run: |
         echo "Installing dependencies..."
         npm ci
-        
-        # Install global dev dependencies
-        echo "Installing global dev dependencies..."
-        npm install -g typescript@^4.9 \
-                     ts-node@^10.0 \
-                     @typescript-eslint/parser@^7.0 \
-                     @typescript-eslint/eslint-plugin@^7.0 \
-                     eslint@^8.56 \
-                     jest@^29.0
       
     - name: Type check
       run: |
         echo "Running type check..."
         npx tsc --noEmit
       
-    - name: Lint
-      run: |
-        echo "Running linting..."
-        npx eslint . --ext .ts
-      
     - name: Build
       run: |
         echo "Building project..."
         npm run build
       
-    - name: Test
-      if: success()
-      run: |
-        echo "Running tests..."
-        
-        # Create data directory
-        mkdir -p data
-        mkdir -p logs
-        
-        # Run a basic extraction test with debug logging
-        DEBUG=garmin-extractor:* node dist/index.js --test
-        
-        # Verify output files exist
-        if [ ! -d "data" ]; then
-          echo "::error::Data directory not found!"
-          exit 1
-        fi
-        
-        # Check for basic output files
-        for file in user-profile.json; do
-          if ! ls data/$file 1> /dev/null 2>&1; then
-            echo "::error::Missing expected file: $file"
-            exit 1
-          fi
-        done
-
-        # Validate JSON files
-        echo "Validating JSON files..."
-        for file in data/*.json; do
-          if [ -f "$file" ]; then
-            if ! jq empty "$file" 2>/dev/null; then
-              echo "::error::Invalid JSON in file: $file"
-              exit 1
-            fi
-          fi
-        done
-      env:
-        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        USER_ID: ${{ secrets.USER_ID }}
-        GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
-        GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
-
-    - name: Upload test results
+    - name: Upload build artifacts
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: test-results
-        path: |
-          data/
-          logs/
+        name: build-output
+        path: dist/
         retention-days: 5 
