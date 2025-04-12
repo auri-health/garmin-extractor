@@ -167,7 +167,7 @@ export class Forerunner235DataFilter {
     };
 
     // Then remove unsupported fields
-    Object.entries(data).forEach(([key, value]) => {
+    Object.entries(data).forEach(([key, _value]) => {
       if (!supportedFeatures.sleep.fields[key]) {
         delete filtered[key];
       }
@@ -186,7 +186,7 @@ export class Forerunner235DataFilter {
     };
 
     // Then remove unsupported fields
-    Object.entries(data).forEach(([key, value]) => {
+    Object.entries(data).forEach(([key, _value]) => {
       if (!supportedFeatures.activities.fields[key]) {
         delete filtered[key];
       }
@@ -205,7 +205,7 @@ export class Forerunner235DataFilter {
     };
 
     // Then remove unsupported fields
-    Object.entries(data).forEach(([key, value]) => {
+    Object.entries(data).forEach(([key, _value]) => {
       if (!supportedFeatures.heartRate.fields[key]) {
         delete filtered[key];
       }
@@ -224,7 +224,7 @@ export class Forerunner235DataFilter {
     };
 
     // Then remove unsupported fields
-    Object.entries(data).forEach(([key, value]) => {
+    Object.entries(data).forEach(([key, _value]) => {
       if (!supportedFeatures.steps.fields[key]) {
         delete filtered[key];
       }
@@ -233,7 +233,7 @@ export class Forerunner235DataFilter {
     return filtered;
   }
 
-  static validateDeviceId(deviceId: string): boolean {
+  static validateDeviceId(_deviceId: string): boolean {
     // Add any Forerunner 235-specific device ID validation if needed
     return true;
   }

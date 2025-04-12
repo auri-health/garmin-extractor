@@ -9,12 +9,11 @@ dotenv.config();
 
 // Parse command line arguments
 const args = process.argv.slice(2);
-let deviceId: string | undefined;
-for (let i = 0; i < args.length; i++) {
-  if (args[i].startsWith('--device=')) {
-    deviceId = args[i].split('=')[1];
-    break;
-  }
+const deviceArg = args.find(arg => arg.startsWith('--device='));
+
+let _deviceId: string | undefined;
+if (deviceArg) {
+  _deviceId = deviceArg.split('=')[1];
 }
 
 // Validate required environment variables
