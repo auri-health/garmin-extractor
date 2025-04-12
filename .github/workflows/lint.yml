@@ -1,4 +1,4 @@
-name: Lint TypeScript
+name: Lint and Type Check
 
 on:
   push:
@@ -12,10 +12,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NODE_VERSION: '18'
+
 jobs:
-  lint:
+  lint-and-type-check:
     runs-on: ubuntu-latest
-    # Make this job a required check
     if: always()
 
     steps:
@@ -24,15 +26,75 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
+      - name: Get npm cache directory
+        id: npm-cache-dir
+        shell: bash
+        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
+    
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        id: npm-cache
+        with:
+          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Install dependencies
-        run: npm ci
+        run: |
+          echo "Installing dependencies..."
+          npm ci
+          
+          # Install global dev dependencies
+          echo "Installing global dev dependencies..."
+          npm install -g typescript@4.9.0 ts-node@10.0.0 @typescript-eslint/parser@7.0.0 @typescript-eslint/eslint-plugin@7.0.0 eslint@8.56.0 eslint-formatter-summary@1.1.0
 
       - name: Run ESLint
+        id: lint
         run: |
-          echo "Running ESLint checks in CI environment..."
-          npx eslint ./src/**/*.ts
+          echo "Running ESLint checks..."
+          
+          # Create output directory for reports
+          mkdir -p reports
+          
+          # Run ESLint with detailed report
+          npx eslint ./src/**/*.ts \
+            --format json \
+            --output-file reports/eslint-report.json \
+            || echo "::error::ESLint found issues"
+          
+          # Display human-readable summary
+          if [ -f reports/eslint-report.json ]; then
+            echo "ESLint Results:"
+            npx eslint-formatter-summary reports/eslint-report.json
+          fi
         env:
-          CI: true 
+          CI: true
+
+      - name: Run TypeScript type check
+        id: type-check
+        run: |
+          echo "Running TypeScript type check..."
+          
+          # Create output directory for reports if it doesn't exist
+          mkdir -p reports
+          
+          # Run type check and capture output
+          npx tsc --noEmit > reports/tsc-report.txt 2>&1 || (
+            echo "::error::TypeScript found type errors"
+            cat reports/tsc-report.txt
+            exit 1
+          )
+
+      - name: Upload check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-and-type-check-results
+          path: |
+            reports/
+            logs/
+          retention-days: 5 
