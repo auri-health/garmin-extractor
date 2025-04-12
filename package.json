@@ -9,7 +9,7 @@
     "start": "node dist/index.ts",
     "dev": "ts-node src/index.ts",
     "test": "jest",
-    "lint": "eslint ."
+    "lint": "eslint \"src/**/*.ts\""
   },
   "repository": {
     "type": "git",
