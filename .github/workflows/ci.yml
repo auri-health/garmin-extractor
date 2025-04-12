@@ -5,6 +5,8 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  schedule:
+    - cron: '0 */6 * * *'  # Run every 6 hours
 
 env:
   NODE_VERSION: '18'
@@ -43,4 +45,49 @@ jobs:
       with:
         name: build-output
         path: dist/
+        retention-days: 5
+
+  extract:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      USER_ID: ${{ secrets.USER_ID }}
+      GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+      GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: build-output
+        path: dist/
+
+    - name: Install dependencies
+      run: |
+        echo "Installing dependencies..."
+        npm ci
+
+    - name: Extract data
+      run: |
+        echo "Extracting data..."
+        node dist/index.js --days=1
+      
+    - name: Upload extraction logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: extraction-logs
+        path: data/
         retention-days: 5 
