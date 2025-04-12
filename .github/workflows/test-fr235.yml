@@ -4,10 +4,10 @@ name: Test Forerunner 235 Extraction
 on:
   push:
     branches:
-      - device-specific-fetch
+      - main
   pull_request:
     branches:
-      - device-specific-fetch
+      - main
 
 jobs:
   test-fr235:
@@ -22,8 +22,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: device-specific-fetch
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
