@@ -5,6 +5,10 @@ import * as path from 'path';
 import { GarminDevice, GarminActivity, GarminHeartRate, GarminSleep, GarminSteps } from '../types/garmin.js';
 import { Forerunner235DataFilter } from '../devices/garminfr235';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 export interface DeviceInfo {
   deviceId: string;
