@@ -22,38 +22,65 @@ export class GarminExtractor {
   private supabase: SupabaseClient;
 
   constructor(client: GarminConnect) {
+    console.log('Initializing GarminExtractor...');
     this.client = client;
     if (!fs.existsSync(this.OUTPUT_DIR)) {
+      console.log(`Creating output directory: ${this.OUTPUT_DIR}`);
       fs.mkdirSync(this.OUTPUT_DIR);
     }
     
-    // Initialize Supabase client
-    this.supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_KEY!
-    );
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_KEY;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase credentials. Please check SUPABASE_URL and SUPABASE_KEY environment variables.');
+    }
+    
+    console.log('Initializing Supabase client...');
+    this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
   private async saveToFile(filename: string, data: unknown): Promise<void> {
-    await fs.promises.writeFile(
-      path.join(this.OUTPUT_DIR, filename),
-      JSON.stringify(data, null, 2),
-      'utf-8',
-    );
+    try {
+      console.log(`Saving data to file: ${filename}`);
+      const filePath = path.join(this.OUTPUT_DIR, filename);
+      await fs.promises.writeFile(
+        filePath,
+        JSON.stringify(data, null, 2),
+        'utf-8',
+      );
+      console.log(`Successfully saved data to: ${filePath}`);
+    } catch (error) {
+      console.error(`Failed to save file ${filename}:`, error instanceof Error ? error.message : String(error));
+      throw error;
+    }
   }
 
   public async getUserDevices(): Promise<DeviceInfo[]> {
-    // Cast the client to any since getDeviceInfo is not in the type definitions
-    const devices = await (this.client as any).getDeviceInfo() as GarminDevice[];
-    return devices.map(device => ({
-      deviceId: device.deviceId,
-      deviceName: device.productDisplayName,
-      deviceType: device.deviceType
-    }));
+    try {
+      console.log('Fetching user devices...');
+      // Cast the client to any since getDeviceInfo is not in the type definitions
+      const devices = await (this.client as any).getDeviceInfo() as GarminDevice[];
+      console.log(`Found ${devices.length} devices`);
+      return devices.map(device => ({
+        deviceId: device.deviceId,
+        deviceName: device.productDisplayName,
+        deviceType: device.deviceType
+      }));
+    } catch (error) {
+      console.error('Failed to get user devices:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error) {
+        console.error('Stack trace:', error.stack);
+      }
+      throw error;
+    }
   }
 
   private async importToSupabase(tableName: string, data: Record<string, any> | Record<string, any>[]): Promise<void> {
     try {
+      console.log(`Importing data to Supabase table: ${tableName}`);
+      console.log('Data to import:', JSON.stringify(data, null, 2));
+      
       const { error } = await this.supabase
         .from(tableName)
         .insert(data);
@@ -62,138 +89,238 @@ export class GarminExtractor {
         console.error(`Error importing to ${tableName}:`, error);
         throw error;
       }
+      console.log(`Successfully imported data to ${tableName}`);
     } catch (error) {
-      console.error(`Failed to import data to ${tableName}:`, error);
+      console.error(`Failed to import data to ${tableName}:`, error instanceof Error ? error.message : String(error));
+      if (error instanceof Error) {
+        console.error('Stack trace:', error.stack);
+      }
       throw error;
     }
   }
 
   public async extractUserProfile(): Promise<void> {
-    const profile = await this.client.getUserProfile();
-    await this.saveToFile('user-profile.json', profile);
-    await this.importToSupabase('user_profiles', {
-      user_id: process.env.USER_ID,
-      ...profile
-    });
+    try {
+      console.log('Extracting user profile...');
+      const profile = await this.client.getUserProfile();
+      console.log('User profile data:', JSON.stringify(profile, null, 2));
+      
+      await this.saveToFile('user-profile.json', profile);
+      
+      if (!process.env.USER_ID) {
+        throw new Error('USER_ID environment variable is not set');
+      }
+      
+      await this.importToSupabase('user_profiles', {
+        user_id: process.env.USER_ID,
+        ...profile
+      });
+      console.log('Successfully extracted and imported user profile');
+    } catch (error) {
+      console.error('Failed to extract user profile:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error) {
+        console.error('Stack trace:', error.stack);
+      }
+      throw error;
+    }
   }
 
   public async extractRecentActivities(deviceId?: string): Promise<void> {
-    const activities = await this.client.getActivities(0, 10) as GarminActivity[];
-    const filteredActivities = deviceId 
-      ? activities.filter(activity => activity.deviceId === deviceId)
-      : activities;
-    
-    await this.saveToFile(
-      deviceId 
+    try {
+      console.log('Extracting recent activities...');
+      const activities = await this.client.getActivities(0, 10) as GarminActivity[];
+      console.log(`Found ${activities.length} recent activities`);
+      
+      const filteredActivities = deviceId 
+        ? activities.filter(activity => activity.deviceId === deviceId)
+        : activities;
+      
+      console.log(`After filtering for device ${deviceId}: ${filteredActivities.length} activities`);
+      
+      const filename = deviceId 
         ? `recent-activities-device-${deviceId}.json`
-        : 'recent-activities.json',
-      filteredActivities
-    );
+        : 'recent-activities.json';
+      
+      await this.saveToFile(filename, filteredActivities);
 
-    await this.importToSupabase('activities', filteredActivities.map(activity => ({
-      user_id: process.env.USER_ID,
-      device_id: activity.deviceId,
-      ...activity
-    })));
+      if (!process.env.USER_ID) {
+        throw new Error('USER_ID environment variable is not set');
+      }
+
+      const activitiesWithUserId = filteredActivities.map(activity => ({
+        user_id: process.env.USER_ID,
+        device_id: activity.deviceId,
+        ...activity
+      }));
+
+      await this.importToSupabase('activities', activitiesWithUserId);
+      console.log('Successfully extracted and imported recent activities');
+    } catch (error) {
+      console.error('Failed to extract recent activities:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error) {
+        console.error('Stack trace:', error.stack);
+      }
+      throw error;
+    }
   }
 
   public async extractHeartRate(date: Date, deviceId?: string): Promise<void> {
-    const heartRate = await this.client.getHeartRate(date) as GarminHeartRate[];
-    let filteredData = deviceId
-      ? heartRate.filter(hr => hr.deviceId === deviceId)
-      : heartRate;
-
-    // Apply Forerunner 235 specific filtering if applicable
-    if (deviceId) {
-      const device = await this.getUserDevices().then(devices => 
-        devices.find(d => d.deviceId === deviceId)
-      );
+    try {
+      console.log(`Extracting heart rate data for date: ${date.toISOString()}`);
+      const heartRate = await this.client.getHeartRate(date) as GarminHeartRate[];
+      console.log(`Found ${heartRate.length} heart rate records`);
       
-      if (device?.deviceName === 'Forerunner 235') {
-        filteredData = filteredData.map(data => Forerunner235DataFilter.filterHeartRateData(data));
+      let filteredData = deviceId
+        ? heartRate.filter(hr => hr.deviceId === deviceId)
+        : heartRate;
+      
+      console.log(`After filtering for device ${deviceId}: ${filteredData.length} records`);
+
+      // Apply Forerunner 235 specific filtering if applicable
+      if (deviceId) {
+        console.log('Checking if device is Forerunner 235...');
+        const device = await this.getUserDevices().then(devices => 
+          devices.find(d => d.deviceId === deviceId)
+        );
+        
+        if (device?.deviceName === 'Forerunner 235') {
+          console.log('Applying Forerunner 235 specific filtering...');
+          filteredData = filteredData.map(data => Forerunner235DataFilter.filterHeartRateData(data));
+        }
       }
-    }
 
-    await this.saveToFile(
-      deviceId
+      const filename = deviceId
         ? `heart-rate-${date.toISOString().split('T')[0]}-device-${deviceId}.json`
-        : `heart-rate-${date.toISOString().split('T')[0]}.json`,
-      filteredData
-    );
+        : `heart-rate-${date.toISOString().split('T')[0]}.json`;
 
-    await this.importToSupabase('heart_rate', filteredData.map(hr => ({
-      user_id: process.env.USER_ID,
-      device_id: hr.deviceId,
-      date: date.toISOString().split('T')[0],
-      ...hr
-    })));
+      await this.saveToFile(filename, filteredData);
+
+      if (!process.env.USER_ID) {
+        throw new Error('USER_ID environment variable is not set');
+      }
+
+      const dataWithUserId = filteredData.map(hr => ({
+        user_id: process.env.USER_ID,
+        device_id: hr.deviceId,
+        date: date.toISOString().split('T')[0],
+        ...hr
+      }));
+
+      await this.importToSupabase('heart_rate', dataWithUserId);
+      console.log('Successfully extracted and imported heart rate data');
+    } catch (error) {
+      console.error('Failed to extract heart rate data:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error) {
+        console.error('Stack trace:', error.stack);
+      }
+      throw error;
+    }
   }
 
   public async extractSleep(date: Date, deviceId?: string): Promise<void> {
-    const sleep = await this.client.getSleepData(date) as GarminSleep[];
-    let filteredData = deviceId
-      ? sleep.filter(s => s.deviceId === deviceId)
-      : sleep;
-
-    // Apply Forerunner 235 specific filtering if applicable
-    if (deviceId) {
-      const device = await this.getUserDevices().then(devices => 
-        devices.find(d => d.deviceId === deviceId)
-      );
+    try {
+      console.log(`Extracting sleep data for date: ${date.toISOString()}`);
+      const sleep = await this.client.getSleepData(date) as GarminSleep[];
+      console.log(`Found ${sleep.length} sleep records`);
       
-      if (device?.deviceName === 'Forerunner 235') {
-        filteredData = filteredData.map(data => Forerunner235DataFilter.filterSleepData(data));
+      let filteredData = deviceId
+        ? sleep.filter(s => s.deviceId === deviceId)
+        : sleep;
+      
+      console.log(`After filtering for device ${deviceId}: ${filteredData.length} records`);
+
+      if (deviceId) {
+        console.log('Checking if device is Forerunner 235...');
+        const device = await this.getUserDevices().then(devices => 
+          devices.find(d => d.deviceId === deviceId)
+        );
+        
+        if (device?.deviceName === 'Forerunner 235') {
+          console.log('Applying Forerunner 235 specific filtering...');
+          filteredData = filteredData.map(data => Forerunner235DataFilter.filterSleepData(data));
+        }
       }
-    }
 
-    await this.saveToFile(
-      deviceId
+      const filename = deviceId
         ? `sleep-${date.toISOString().split('T')[0]}-device-${deviceId}.json`
-        : `sleep-${date.toISOString().split('T')[0]}.json`,
-      filteredData
-    );
+        : `sleep-${date.toISOString().split('T')[0]}.json`;
 
-    await this.importToSupabase('sleep', filteredData.map(s => ({
-      user_id: process.env.USER_ID,
-      device_id: s.deviceId,
-      date: date.toISOString().split('T')[0],
-      ...s
-    })));
+      await this.saveToFile(filename, filteredData);
+
+      if (!process.env.USER_ID) {
+        throw new Error('USER_ID environment variable is not set');
+      }
+
+      const dataWithUserId = filteredData.map(s => ({
+        user_id: process.env.USER_ID,
+        device_id: s.deviceId,
+        date: date.toISOString().split('T')[0],
+        ...s
+      }));
+
+      await this.importToSupabase('sleep', dataWithUserId);
+      console.log('Successfully extracted and imported sleep data');
+    } catch (error) {
+      console.error('Failed to extract sleep data:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error) {
+        console.error('Stack trace:', error.stack);
+      }
+      throw error;
+    }
   }
 
   public async extractSteps(date: Date, deviceId?: string): Promise<void> {
-    const stepsResponse = await this.client.getSteps(date);
-    const steps = Array.isArray(stepsResponse) ? stepsResponse : [stepsResponse];
-    const typedSteps = steps as unknown as GarminSteps[];
-    
-    let filteredData = deviceId
-      ? typedSteps.filter(s => s.deviceId === deviceId)
-      : typedSteps;
-
-    // Apply Forerunner 235 specific filtering if applicable
-    if (deviceId) {
-      const device = await this.getUserDevices().then(devices => 
-        devices.find(d => d.deviceId === deviceId)
-      );
+    try {
+      console.log(`Extracting steps data for date: ${date.toISOString()}`);
+      const stepsResponse = await this.client.getSteps(date);
+      const steps = Array.isArray(stepsResponse) ? stepsResponse : [stepsResponse];
+      const typedSteps = steps as unknown as GarminSteps[];
+      console.log(`Found ${typedSteps.length} steps records`);
       
-      if (device?.deviceName === 'Forerunner 235') {
-        filteredData = filteredData.map(data => Forerunner235DataFilter.filterStepsData(data));
+      let filteredData = deviceId
+        ? typedSteps.filter(s => s.deviceId === deviceId)
+        : typedSteps;
+      
+      console.log(`After filtering for device ${deviceId}: ${filteredData.length} records`);
+
+      if (deviceId) {
+        console.log('Checking if device is Forerunner 235...');
+        const device = await this.getUserDevices().then(devices => 
+          devices.find(d => d.deviceId === deviceId)
+        );
+        
+        if (device?.deviceName === 'Forerunner 235') {
+          console.log('Applying Forerunner 235 specific filtering...');
+          filteredData = filteredData.map(data => Forerunner235DataFilter.filterStepsData(data));
+        }
       }
-    }
 
-    await this.saveToFile(
-      deviceId
+      const filename = deviceId
         ? `steps-${date.toISOString().split('T')[0]}-device-${deviceId}.json`
-        : `steps-${date.toISOString().split('T')[0]}.json`,
-      filteredData
-    );
+        : `steps-${date.toISOString().split('T')[0]}.json`;
 
-    await this.importToSupabase('steps', filteredData.map(s => ({
-      user_id: process.env.USER_ID,
-      device_id: s.deviceId,
-      date: date.toISOString().split('T')[0],
-      ...s
-    })));
+      await this.saveToFile(filename, filteredData);
+
+      if (!process.env.USER_ID) {
+        throw new Error('USER_ID environment variable is not set');
+      }
+
+      const dataWithUserId = filteredData.map(s => ({
+        user_id: process.env.USER_ID,
+        device_id: s.deviceId,
+        date: date.toISOString().split('T')[0],
+        ...s
+      }));
+
+      await this.importToSupabase('steps', dataWithUserId);
+      console.log('Successfully extracted and imported steps data');
+    } catch (error) {
+      console.error('Failed to extract steps data:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error) {
+        console.error('Stack trace:', error.stack);
+      }
+      throw error;
+    }
   }
 
   public async extractDailyActivities(date: Date, deviceId?: string): Promise<void> {
