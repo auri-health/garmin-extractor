@@ -50,7 +50,12 @@ jobs:
           
           # Install global dev dependencies
           echo "Installing global dev dependencies..."
-          npm install -g typescript@4.9.0 ts-node@10.0.0 @typescript-eslint/parser@7.0.0 @typescript-eslint/eslint-plugin@7.0.0 eslint@8.56.0 eslint-formatter-summary@1.1.0
+          npm install -g typescript@^4.9 \
+                       ts-node@^10.0 \
+                       @typescript-eslint/parser@^7.0 \
+                       @typescript-eslint/eslint-plugin@^7.0 \
+                       eslint@^8.56 \
+                       eslint-formatter-summary@^1.1
 
       - name: Run ESLint
         id: lint
