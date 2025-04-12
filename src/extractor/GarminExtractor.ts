@@ -266,7 +266,17 @@ export class GarminExtractor {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise);
-    console.error('Reason:', reason);
+    if (reason instanceof Error) {
+      console.error('Error:', {
+        name: reason.name,
+        message: reason.message,
+        stack: reason.stack
+      });
+    } else {
+      console.error('Non-Error rejection reason:', 
+        typeof reason === 'object' ? JSON.stringify(reason, null, 2) : reason
+      );
+    }
     process.exit(1);
   });
 
@@ -310,28 +320,32 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       
       console.log('Data extraction completed successfully');
     } catch (error) {
-      console.error('Error during data extraction:', error);
+      console.error('Error during data extraction:');
       if (error instanceof Error) {
-        console.error('Error details:', {
+        console.error({
+          name: error.name,
           message: error.message,
-          stack: error.stack,
-          name: error.name
+          stack: error.stack
         });
       } else {
-        console.error('Non-Error object thrown:', JSON.stringify(error, null, 2));
+        console.error('Non-Error object thrown:', 
+          typeof error === 'object' ? JSON.stringify(error, null, 2) : error
+        );
       }
       process.exit(1);
     }
   })().catch(error => {
-    console.error('Top level error:', error);
+    console.error('Top level error:');
     if (error instanceof Error) {
-      console.error('Error details:', {
+      console.error({
+        name: error.name,
         message: error.message,
-        stack: error.stack,
-        name: error.name
+        stack: error.stack
       });
     } else {
-      console.error('Non-Error object thrown:', JSON.stringify(error, null, 2));
+      console.error('Non-Error object thrown:', 
+        typeof error === 'object' ? JSON.stringify(error, null, 2) : error
+      );
     }
     process.exit(1);
   });
