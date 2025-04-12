@@ -7,6 +7,16 @@ import { GarminExtractor } from './extractor/GarminExtractor';
 // Load environment variables
 dotenv.config();
 
+// Parse command line arguments
+const args = process.argv.slice(2);
+let deviceId: string | undefined;
+for (let i = 0; i < args.length; i++) {
+  if (args[i].startsWith('--device=')) {
+    deviceId = args[i].split('=')[1];
+    break;
+  }
+}
+
 // Validate required environment variables
 const requiredEnvVars = [
   'SUPABASE_URL',
@@ -51,11 +61,24 @@ async function main(): Promise<void> {
     );
 
     const extractor = new GarminExtractor(auth.getClient());
-    await extractor.extractAll();
+
+    // First, get the user's devices to find the Forerunner 235
+    const devices = await extractor.getUserDevices();
+    const forerunner235 = devices.find(device => device.deviceName === 'Forerunner 235');
+
+    if (!forerunner235) {
+      console.error('Forerunner 235 device not found');
+      return;
+    }
+
+    console.log('Found Forerunner 235:', forerunner235);
+
+    // Extract data for the last 7 days with device-specific filtering
+    await extractor.extractAll(forerunner235.deviceId);
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);
   }
 }
 
-main();
+main().catch(console.error);
