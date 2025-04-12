@@ -1,5 +1,6 @@
 name: Test Forerunner 235 Extraction
 
+# Workflow for testing Forerunner 235 specific data extraction
 on:
   push:
     branches:
