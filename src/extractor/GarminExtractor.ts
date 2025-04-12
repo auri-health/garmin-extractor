@@ -3,7 +3,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { GarminDevice, GarminActivity, GarminHeartRate, GarminSleep, GarminSteps } from '../types/garmin.js';
-import { Forerunner235DataFilter } from '../devices/garminfr235';
+import { Forerunner235DataFilter } from '../devices/garminfr235.js';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 

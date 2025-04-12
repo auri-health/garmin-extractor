@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { GarminAuth } from './auth/GarminAuth';
-import { SupabaseGarminAuthStorage } from './auth/SupabaseGarminAuthStorage';
-import { GarminExtractor } from './extractor/GarminExtractor';
+import { GarminAuth } from './auth/GarminAuth.js';
+import { SupabaseGarminAuthStorage } from './auth/SupabaseGarminAuthStorage.js';
+import { GarminExtractor } from './extractor/GarminExtractor.js';
 
 // Set up global error handlers
 process.on('unhandledRejection', (reason, promise) => {
