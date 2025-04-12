@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "description": "Extract data from Garmin Connect API",
   "main": "dist/index.js",
+  "type": "module",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.ts",
     "dev": "ts-node src/index.ts",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint . --ext .ts"
   },
   "repository": {
     "type": "git",
@@ -26,8 +28,12 @@
     "garmin-connect": "^1.0.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
     "@types/jest": "^29.0.0",
     "@types/node": "^18.0.0",
+    "eslint": "^9.24.0",
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
     "ts-node": "^10.0.0",
