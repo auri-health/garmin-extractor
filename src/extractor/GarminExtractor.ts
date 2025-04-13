@@ -26,13 +26,10 @@ export class GarminExtractor {
 
   private async saveToSupabaseBucket(filename: string, data: unknown): Promise<void> {
     const jsonString = JSON.stringify(data, null, 2);
-    const { error } = await this.supabase
-      .storage
-      .from('garmin-data')
-      .upload(filename, jsonString, {
-        contentType: 'application/json',
-        upsert: true
-      });
+    const { error } = await this.supabase.storage.from('garmin-data').upload(filename, jsonString, {
+      contentType: 'application/json',
+      upsert: true,
+    });
 
     if (error) {
       throw new Error(`Failed to save to Supabase storage: ${error.message}`);
@@ -40,10 +37,7 @@ export class GarminExtractor {
   }
 
   private async saveData(filename: string, data: unknown): Promise<void> {
-    await Promise.all([
-      this.saveToFile(filename, data),
-      this.saveToSupabaseBucket(filename, data)
-    ]);
+    await Promise.all([this.saveToFile(filename, data), this.saveToSupabaseBucket(filename, data)]);
   }
 
   public async extractUserProfile(): Promise<void> {
