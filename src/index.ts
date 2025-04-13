@@ -8,7 +8,9 @@ import { GarminExtractor } from './extractor/GarminExtractor.js';
 dotenv.config();
 
 async function main(): Promise<void> {
-  const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
+  // Use service role key in GitHub Actions, otherwise use anon key
+  const key = process.env.CI ? process.env.SUPABASE_SERVICE_ROLE_KEY! : process.env.SUPABASE_KEY!;
+  const supabase = createClient(process.env.SUPABASE_URL!, key);
 
   const storage = new SupabaseGarminAuthStorage(supabase);
   const auth = new GarminAuth(storage);
