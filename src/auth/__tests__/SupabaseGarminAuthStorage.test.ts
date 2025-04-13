@@ -2,16 +2,21 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseGarminAuthStorage } from '../SupabaseGarminAuthStorage';
 import { GarminCredentials } from '../types';
 
+interface MockSupabaseResponse<T = unknown> {
+  data?: T | null;
+  error: Error | null;
+}
+
 // Mock SupabaseClient
 const mockSupabase = {
-  from: jest.fn(() => ({
-    upsert: jest.fn(),
-    select: jest.fn(() => ({
-      eq: jest.fn(() => ({
-        single: jest.fn(),
-      })),
-    })),
-  })),
+  from: jest.fn().mockReturnValue({
+    upsert: jest.fn().mockReturnValue(Promise.resolve({ error: null })),
+    select: jest.fn().mockReturnValue({
+      eq: jest.fn().mockReturnValue({
+        single: jest.fn().mockReturnValue(Promise.resolve({ data: null, error: null })),
+      }),
+    }),
+  }),
 } as unknown as jest.Mocked<SupabaseClient>;
 
 describe('SupabaseGarminAuthStorage', () => {
@@ -31,8 +36,9 @@ describe('SupabaseGarminAuthStorage', () => {
     };
 
     it('should store credentials successfully', async () => {
-      const mockUpsert = jest.fn().mockResolvedValue({ error: null });
-      mockSupabase.from.mockReturnValue({ upsert: mockUpsert } as any);
+      const mockFrom = mockSupabase.from('garmin_auth');
+      const mockUpsert = (mockFrom as unknown as { upsert: jest.Mock }).upsert;
+      mockUpsert.mockResolvedValueOnce({ error: null });
 
       await expect(storage.storeCredentials(mockCredentials)).resolves.not.toThrow();
 
@@ -47,11 +53,12 @@ describe('SupabaseGarminAuthStorage', () => {
 
     it('should throw error when storage fails', async () => {
       const error = new Error('Storage failed');
-      const mockUpsert = jest.fn().mockResolvedValue({ error });
-      mockSupabase.from.mockReturnValue({ upsert: mockUpsert } as any);
+      const mockFrom = mockSupabase.from('garmin_auth');
+      const mockUpsert = (mockFrom as unknown as { upsert: jest.Mock }).upsert;
+      mockUpsert.mockResolvedValueOnce({ error });
 
       await expect(storage.storeCredentials(mockCredentials)).rejects.toThrow(
-        'Failed to store credentials: Storage failed'
+        'Failed to store credentials: Storage failed',
       );
     });
   });
@@ -66,10 +73,11 @@ describe('SupabaseGarminAuthStorage', () => {
     };
 
     it('should retrieve credentials successfully', async () => {
-      const mockSingle = jest.fn().mockResolvedValue({ data: mockData, error: null });
-      const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-      mockSupabase.from.mockReturnValue({ select: mockSelect } as any);
+      const mockFrom = mockSupabase.from('garmin_auth');
+      const mockSelect = (mockFrom as unknown as { select: jest.Mock }).select;
+      const mockEq = (mockSelect('*') as unknown as { eq: jest.Mock }).eq;
+      const mockSingle = (mockEq('user_id', userId) as unknown as { single: jest.Mock }).single;
+      mockSingle.mockResolvedValueOnce({ data: mockData, error: null });
 
       const result = await storage.getCredentials(userId);
 
@@ -83,13 +91,15 @@ describe('SupabaseGarminAuthStorage', () => {
       expect(mockSupabase.from).toHaveBeenCalledWith('garmin_auth');
       expect(mockSelect).toHaveBeenCalledWith('*');
       expect(mockEq).toHaveBeenCalledWith('user_id', userId);
+      expect(mockSingle).toHaveBeenCalled();
     });
 
     it('should return null when no credentials found', async () => {
-      const mockSingle = jest.fn().mockResolvedValue({ data: null, error: null });
-      const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-      mockSupabase.from.mockReturnValue({ select: mockSelect } as any);
+      const mockFrom = mockSupabase.from('garmin_auth');
+      const mockSelect = (mockFrom as unknown as { select: jest.Mock }).select;
+      const mockEq = (mockSelect('*') as unknown as { eq: jest.Mock }).eq;
+      const mockSingle = (mockEq('user_id', userId) as unknown as { single: jest.Mock }).single;
+      mockSingle.mockResolvedValueOnce({ data: null, error: null });
 
       const result = await storage.getCredentials(userId);
 
@@ -98,13 +108,14 @@ describe('SupabaseGarminAuthStorage', () => {
 
     it('should throw error when retrieval fails', async () => {
       const error = new Error('Retrieval failed');
-      const mockSingle = jest.fn().mockResolvedValue({ data: null, error });
-      const mockEq = jest.fn().mockReturnValue({ single: mockSingle });
-      const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-      mockSupabase.from.mockReturnValue({ select: mockSelect } as any);
+      const mockFrom = mockSupabase.from('garmin_auth');
+      const mockSelect = (mockFrom as unknown as { select: jest.Mock }).select;
+      const mockEq = (mockSelect('*') as unknown as { eq: jest.Mock }).eq;
+      const mockSingle = (mockEq('user_id', userId) as unknown as { single: jest.Mock }).single;
+      mockSingle.mockResolvedValueOnce({ data: null, error });
 
       await expect(storage.getCredentials(userId)).rejects.toThrow(
-        'Failed to get credentials: Retrieval failed'
+        'Failed to get credentials: Retrieval failed',
       );
     });
   });
