@@ -7,10 +7,12 @@ export class GarminExtractor {
   private readonly OUTPUT_DIR = 'data';
   private client: GarminConnect;
   private supabase: SupabaseClient;
+  private userId: string;
 
-  constructor(client: GarminConnect, supabase: SupabaseClient) {
+  constructor(client: GarminConnect, supabase: SupabaseClient, userId: string) {
     this.client = client;
     this.supabase = supabase;
+    this.userId = userId;
     if (!fs.existsSync(this.OUTPUT_DIR)) {
       fs.mkdirSync(this.OUTPUT_DIR);
     }
@@ -26,7 +28,9 @@ export class GarminExtractor {
 
   private async saveToSupabaseBucket(filename: string, data: unknown): Promise<void> {
     const jsonString = JSON.stringify(data, null, 2);
-    const { error } = await this.supabase.storage.from('garmin-data').upload(filename, jsonString, {
+    // Organize files by user ID to prevent conflicts and manage permissions
+    const filePath = `${this.userId}/${filename}`;
+    const { error } = await this.supabase.storage.from('garmin-data').upload(filePath, jsonString, {
       contentType: 'application/json',
       upsert: true,
     });
