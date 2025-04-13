@@ -1,1 +1,0 @@
-import { GarminActivity, GarminHeartRate, GarminSleep, GarminSteps } from '../types/garmin.js'; 
