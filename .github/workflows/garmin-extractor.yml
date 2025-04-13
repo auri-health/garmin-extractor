@@ -1,0 +1,43 @@
+name: Garmin Data Extraction
+
+on:
+  schedule:
+    # Runs at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build project
+      run: npm run build
+      
+    - name: Run Garmin Extractor
+      run: npm start
+      env:
+        GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+        GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+        USER_ID: ${{ secrets.USER_ID }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
+    - name: Upload extracted data
+      if: always()  # Run even if previous step fails
+      uses: actions/upload-artifact@v4
+      with:
+        name: garmin-data
+        path: data/
+        retention-days: 7 
