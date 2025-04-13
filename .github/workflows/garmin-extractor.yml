@@ -26,11 +26,13 @@ jobs:
       run: npm run build
       
     - name: Run Garmin Extractor
-      run: npm start
+      run: |
+        # Ensure USER_ID is properly formatted
+        export USER_ID=$(echo "${{ secrets.USER_ID }}" | tr -d '[:space:]')
+        npm start
       env:
         GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
         GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
-        USER_ID: ${{ secrets.USER_ID }}
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
