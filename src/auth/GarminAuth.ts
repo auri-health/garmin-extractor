@@ -1,17 +1,18 @@
-import { GarminConnect } from 'garmin-connect';
+import pkg from 'garmin-connect';
+const { GarminConnect } = pkg;
 import * as dotenv from 'dotenv';
-import { GarminAuthStorage, GarminCredentials } from './types';
+import { GarminAuthStorage, GarminCredentials } from './types.js';
 
 dotenv.config();
 
 export class GarminAuth {
-  private garminClient: GarminConnect;
+  private client: InstanceType<typeof GarminConnect>;
   private storage: GarminAuthStorage;
   private isAuthenticated: boolean = false;
 
   constructor(storage: GarminAuthStorage) {
     this.storage = storage;
-    this.garminClient = new GarminConnect({
+    this.client = new GarminConnect({
       username: '',
       password: '',
     });
@@ -20,11 +21,11 @@ export class GarminAuth {
   private async attemptLogin(email: string, password: string): Promise<void> {
     try {
       console.log('Attempting to login with Garmin Connect...');
-      this.garminClient = new GarminConnect({
+      this.client = new GarminConnect({
         username: email,
         password: password,
       });
-      await this.garminClient.login();
+      await this.client.login();
       console.log('✓ Login successful');
     } catch (error: unknown) {
       console.error('Detailed login error:', error);
@@ -99,10 +100,10 @@ export class GarminAuth {
     }
   }
 
-  public getClient(): GarminConnect {
+  public getClient(): InstanceType<typeof GarminConnect> {
     if (!this.isAuthenticated) {
       throw new Error('Not authenticated. Call authenticate() first.');
     }
-    return this.garminClient;
+    return this.client;
   }
 }

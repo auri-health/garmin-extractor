@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { GarminAuth } from './auth/GarminAuth';
-import { SupabaseGarminAuthStorage } from './auth/SupabaseGarminAuthStorage';
-import { GarminExtractor } from './extractor/GarminExtractor';
+import { GarminAuth } from './auth/GarminAuth.js';
+import { SupabaseGarminAuthStorage } from './auth/SupabaseGarminAuthStorage.js';
+import { GarminExtractor } from './extractor/GarminExtractor.js';
 
 dotenv.config();
 
@@ -15,7 +15,7 @@ async function main(): Promise<void> {
   try {
     await auth.authenticate(
       process.env.USER_ID!,
-      process.env.GARMIN_EMAIL!,
+      process.env.GARMIN_USERNAME!,
       process.env.GARMIN_PASSWORD!,
     );
 
