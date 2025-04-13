@@ -2,11 +2,6 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseGarminAuthStorage } from '../SupabaseGarminAuthStorage';
 import { GarminCredentials } from '../types';
 
-interface MockSupabaseResponse<T = unknown> {
-  data?: T | null;
-  error: Error | null;
-}
-
 // Mock SupabaseClient
 const mockSupabase = {
   from: jest.fn().mockReturnValue({
