@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+  USER_ID: ${{ secrets.USER_ID }}
+  GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+  GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x]
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        npm ci
+        npm install -g typescript @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint prettier
+      
+    - name: Type check
+      run: npx tsc --noEmit
+      
+    - name: Lint
+      run: npx eslint . --ext .ts
+      
+    - name: Build
+      run: npm run build
+      
+    # Tests will be enabled once we add them
+    # - name: Test
+    #   run: npm test
+    #   env:
+    #     SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+    #     SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+    #     USER_ID: ${{ secrets.USER_ID }}
+    #     GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+    #     GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }} 
