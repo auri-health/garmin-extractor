@@ -9,14 +9,12 @@ export class SupabaseGarminAuthStorage implements GarminAuthStorage {
   }
 
   public async storeCredentials(credentials: GarminCredentials): Promise<void> {
-    const { error } = await this.supabase
-      .from('garmin_auth')
-      .upsert({
-        user_id: credentials.userId,
-        garmin_email: credentials.garminEmail,
-        garmin_password: credentials.garminPassword,
-        token_expires_at: credentials.tokenExpiresAt?.toISOString(),
-      });
+    const { error } = await this.supabase.from('garmin_auth').upsert({
+      user_id: credentials.userId,
+      garmin_email: credentials.garminEmail,
+      garmin_password: credentials.garminPassword,
+      token_expires_at: credentials.tokenExpiresAt?.toISOString(),
+    });
 
     if (error) {
       throw new Error(`Failed to store credentials: ${error.message}`);

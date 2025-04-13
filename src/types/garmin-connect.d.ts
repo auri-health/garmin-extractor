@@ -7,19 +7,53 @@ declare module 'garmin-connect' {
   interface Activity {
     activityId: string;
     startTimeLocal: string;
-    [key: string]: any;
+    [key: string]: string | number | boolean | null | undefined;
+  }
+
+  interface HeartRateData {
+    heartRateValues: Array<{ timestamp: string; value: number }>;
+    maxHeartRate: number;
+    minHeartRate: number;
+    restingHeartRate: number;
+  }
+
+  interface SleepData {
+    dailySleepDTO: {
+      sleepStartTimestamp: string;
+      sleepEndTimestamp: string;
+      deepSleepSeconds: number;
+      lightSleepSeconds: number;
+      remSleepSeconds: number;
+      awakeSleepSeconds: number;
+      sleepQualityTypePK: number;
+    };
+  }
+
+  interface DailyActivity {
+    steps: number;
+    calories: number;
+    distance: number;
+    activeMinutes: number;
+    floorsClimbed: number;
+  }
+
+  interface UserProfile {
+    userName: string;
+    emailAddress: string;
+    location: string;
+    [key: string]: string | number | boolean | null | undefined;
   }
 
   export class GarminConnect {
     constructor(config: GarminConnectConfig);
     login(): Promise<void>;
     getActivities(start: number, limit: number): Promise<Activity[]>;
-    getUserProfile(): Promise<{ userName: string; [key: string]: any }>;
-    getHeartRate(date: Date): Promise<any>;
-    getSleepData(date: Date): Promise<any>;
+    getUserProfile(): Promise<UserProfile>;
+    getHeartRate(date: Date): Promise<HeartRateData>;
+    getSleepData(date: Date): Promise<SleepData>;
     getSteps(date: Date): Promise<number>;
-    getActivitiesForDate(date: Date): Promise<any>;
-    getUserSummary(date: Date): Promise<any>;
-    getDailySummary(date: Date): Promise<any>;
+    getActivitiesForDate(date: Date): Promise<Activity[]>;
+    getUserSummary(date: Date): Promise<DailyActivity>;
+    getDailySummary(date: Date): Promise<DailyActivity>;
   }
 }
