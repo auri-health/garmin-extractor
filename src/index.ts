@@ -20,7 +20,7 @@ async function main(): Promise<void> {
       process.env.GARMIN_PASSWORD!,
     );
 
-    const extractor = new GarminExtractor(auth.getClient());
+    const extractor = new GarminExtractor(auth.getClient(), supabase);
     await extractor.extractAll();
   } catch (error) {
     console.error('Error:', error);
