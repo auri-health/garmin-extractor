@@ -10,7 +10,7 @@ env:
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
   USER_ID: ${{ secrets.USER_ID }}
-  GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
+  GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
   GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
 
 jobs:
@@ -19,37 +19,36 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [16.x, 18.x]
+        node-version: [18.x, 20.x]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     
     - name: Install dependencies
-      run: |
-        npm ci
-        npm install -g typescript @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint prettier
+      run: npm ci
       
     - name: Type check
       run: npx tsc --noEmit
       
-    - name: Lint
-      run: npx eslint . --ext .ts
+    - name: Lint and Format Check
+      run: |
+        npx eslint . --ext .ts
+        npx prettier --check "src/**/*.ts"
       
     - name: Build
       run: npm run build
       
-    # Tests will be enabled once we add them
-    # - name: Test
-    #   run: npm test
-    #   env:
-    #     SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-    #     SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-    #     USER_ID: ${{ secrets.USER_ID }}
-    #     GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
-    #     GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }} 
+    - name: Test
+      run: npm test
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        USER_ID: ${{ secrets.USER_ID }}
+        GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+        GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }} 
