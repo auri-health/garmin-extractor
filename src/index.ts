@@ -1,3 +1,4 @@
+// Main entry point for Garmin data extraction
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import { GarminAuth } from './auth/GarminAuth.js';
