@@ -1,13 +1,16 @@
 import { GarminConnect } from 'garmin-connect';
 import * as fs from 'fs';
 import * as path from 'path';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export class GarminExtractor {
   private readonly OUTPUT_DIR = 'data';
   private client: GarminConnect;
+  private supabase: SupabaseClient;
 
-  constructor(client: GarminConnect) {
+  constructor(client: GarminConnect, supabase: SupabaseClient) {
     this.client = client;
+    this.supabase = supabase;
     if (!fs.existsSync(this.OUTPUT_DIR)) {
       fs.mkdirSync(this.OUTPUT_DIR);
     }
@@ -21,29 +24,51 @@ export class GarminExtractor {
     );
   }
 
+  private async saveToSupabaseBucket(filename: string, data: unknown): Promise<void> {
+    const jsonString = JSON.stringify(data, null, 2);
+    const { error } = await this.supabase
+      .storage
+      .from('garmin-data')
+      .upload(filename, jsonString, {
+        contentType: 'application/json',
+        upsert: true
+      });
+
+    if (error) {
+      throw new Error(`Failed to save to Supabase storage: ${error.message}`);
+    }
+  }
+
+  private async saveData(filename: string, data: unknown): Promise<void> {
+    await Promise.all([
+      this.saveToFile(filename, data),
+      this.saveToSupabaseBucket(filename, data)
+    ]);
+  }
+
   public async extractUserProfile(): Promise<void> {
     const profile = await this.client.getUserProfile();
-    await this.saveToFile('user-profile.json', profile);
+    await this.saveData('user-profile.json', profile);
   }
 
   public async extractRecentActivities(): Promise<void> {
     const activities = await this.client.getActivities(0, 10);
-    await this.saveToFile('recent-activities.json', activities);
+    await this.saveData('recent-activities.json', activities);
   }
 
   public async extractHeartRate(date: Date): Promise<void> {
     const heartRate = await this.client.getHeartRate(date);
-    await this.saveToFile(`heart-rate-${date.toISOString().split('T')[0]}.json`, heartRate);
+    await this.saveData(`heart-rate-${date.toISOString().split('T')[0]}.json`, heartRate);
   }
 
   public async extractSleep(date: Date): Promise<void> {
     const sleep = await this.client.getSleepData(date);
-    await this.saveToFile(`sleep-${date.toISOString().split('T')[0]}.json`, sleep);
+    await this.saveData(`sleep-${date.toISOString().split('T')[0]}.json`, sleep);
   }
 
   public async extractSteps(date: Date): Promise<void> {
     const steps = await this.client.getSteps(date);
-    await this.saveToFile(`steps-${date.toISOString().split('T')[0]}.json`, steps);
+    await this.saveData(`steps-${date.toISOString().split('T')[0]}.json`, steps);
   }
 
   public async extractDailyActivities(date: Date): Promise<void> {
@@ -52,7 +77,7 @@ export class GarminExtractor {
       const activityDate = new Date(activity.startTimeLocal).toISOString().split('T')[0];
       return activityDate === date.toISOString().split('T')[0];
     });
-    await this.saveToFile(`activities-${date.toISOString().split('T')[0]}.json`, dailyActivities);
+    await this.saveData(`activities-${date.toISOString().split('T')[0]}.json`, dailyActivities);
   }
 
   public async extractLastNDays(days: number): Promise<void> {
