@@ -33,7 +33,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",
     "dotenv": "^16.4.5",
-    "garmin-connect": "^1.6.3"
+    "garmin-connect": "^1.6.2"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
