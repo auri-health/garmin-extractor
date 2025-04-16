@@ -23,7 +23,11 @@ async function main(): Promise<void> {
     );
 
     const extractor = new GarminExtractor(auth.getClient(), supabase, process.env.USER_ID!);
-    await extractor.extractAll();
+    
+    // Get the extraction mode from environment variable, default to 'default'
+    const mode = (process.env.EXTRACT_MODE || 'default') as 'historic' | 'recent' | 'default';
+    
+    await extractor.extractAll(mode);
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);

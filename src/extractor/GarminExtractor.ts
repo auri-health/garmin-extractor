@@ -93,9 +93,45 @@ export class GarminExtractor {
     }
   }
 
-  public async extractAll(): Promise<void> {
+  public async extractRecentDays(): Promise<void> {
+    const dates = [new Date(), new Date(Date.now() - 86400000)]; // today and yesterday
+    for (const date of dates) {
+      await this.extractHeartRate(date);
+      await this.extractSleep(date);
+      await this.extractSteps(date);
+      await this.extractDailyActivities(date);
+    }
+  }
+
+  public async extractDateRange(startDate: Date, endDate: Date): Promise<void> {
+    const dates: Date[] = [];
+    let currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      dates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    for (const date of dates) {
+      await this.extractHeartRate(date);
+      await this.extractSleep(date);
+      await this.extractSteps(date);
+      await this.extractDailyActivities(date);
+    }
+  }
+
+  public async extractAll(mode: 'historic' | 'recent' | 'default' = 'default'): Promise<void> {
     await this.extractUserProfile();
     await this.extractRecentActivities();
-    await this.extractLastNDays(7); // Extract last 7 days of data
+
+    if (mode === 'historic' && process.env.START_DATE && process.env.END_DATE) {
+      const startDate = new Date(process.env.START_DATE);
+      const endDate = new Date(process.env.END_DATE);
+      await this.extractDateRange(startDate, endDate);
+    } else if (mode === 'recent') {
+      await this.extractRecentDays();
+    } else {
+      await this.extractLastNDays(30); // default behavior
+    }
   }
 }
