@@ -105,11 +105,11 @@ export class GarminExtractor {
 
   public async extractDateRange(startDate: Date, endDate: Date): Promise<void> {
     const dates: Date[] = [];
-    let currentDate = new Date(startDate);
-    
-    while (currentDate <= endDate) {
-      dates.push(new Date(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    for (const d = start; d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(new Date(d));
     }
 
     for (const date of dates) {
