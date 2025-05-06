@@ -2,8 +2,8 @@ name: Garmin Data Extraction
 
 on:
   schedule:
-    # Runs at 10:00, 14:00, 18:00, 22:00, 02:00, 06:00 UTC
-    - cron: '0 10,14,18,22,2,6 * * *'
+    # Runs every hour
+    - cron: '0 * * * *'
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
